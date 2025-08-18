@@ -98,49 +98,32 @@ FORECAST: Your forecast text here..."""
             # Generate AI horoscope
             horoscope_response = model.generate_content(horoscope_prompt)
             horoscope_text = horoscope_response.text.strip()
-            
+
             # Parse AI response
             traits_line = [line for line in horoscope_text.split('\n') if line.startswith('TRAITS:')]
             forecast_line = [line for line in horoscope_text.split('\n') if line.startswith('FORECAST:')]
-            
+
             if traits_line and forecast_line:
                 traits = [trait.strip() for trait in traits_line[0].replace('TRAITS:', '').split(',')]
                 forecast = forecast_line[0].replace('FORECAST:', '').strip()
+                # Prepare response
+                response = {
+                    "zodiacSign": zodiac_sign,
+                    "element": zodiac_info.get("element", ""),
+                    "personalityTraits": traits,
+                    "predictions": forecast,
+                    "birthDetails": {
+                        "name": data['name'],
+                        "dateOfBirth": data['dateOfBirth'],
+                        "timeOfBirth": data['timeOfBirth'],
+                        "placeOfBirth": data['placeOfBirth']
+                    }
+                }
+                return jsonify(response)
             else:
-                # Fallback to hardcoded data if AI parsing fails
-                traits = zodiac_info.get("personality_traits", [])[:5]
-                forecast = zodiac_info.get("predictions", "")
-            
-            # Prepare response
-            response = {
-                "zodiacSign": zodiac_sign,
-                "element": zodiac_info.get("element", ""),
-                "personalityTraits": traits,
-                "predictions": forecast,
-                "birthDetails": {
-                    "name": data['name'],
-                    "dateOfBirth": data['dateOfBirth'],
-                    "timeOfBirth": data['timeOfBirth'],
-                    "placeOfBirth": data['placeOfBirth']
-                }
-            }
-            
+                return jsonify({"error": "AI response invalid. Could not parse traits or forecast."}), 500
         except Exception as ai_error:
-            # Fallback to hardcoded data if AI fails
-            response = {
-                "zodiacSign": zodiac_sign,
-                "element": zodiac_info.get("element", ""),
-                "personalityTraits": zodiac_info.get("personality_traits", [])[:5],
-                "predictions": zodiac_info.get("predictions", ""),
-                "birthDetails": {
-                    "name": data['name'],
-                    "dateOfBirth": data['dateOfBirth'],
-                    "timeOfBirth": data['timeOfBirth'],
-                    "placeOfBirth": data['placeOfBirth']
-                }
-            }
-        
-        return jsonify(response)
+            return jsonify({"error": f"AI service error: {str(ai_error)}"}), 500
         
     except Exception as e:
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
@@ -212,13 +195,14 @@ Give a brief, encouraging astrological insight based on their zodiac sign. Keep 
             # Generate response using Gemini
             response = model.generate_content(prompt)
             answer = response.text.strip()
-            
-            return jsonify({
-                "answer": answer,
-                "zodiacSign": zodiac_sign,
-                "question": data['question']
-            })
-            
+            if answer:
+                return jsonify({
+                    "answer": answer,
+                    "zodiacSign": zodiac_sign,
+                    "question": data['question']
+                })
+            else:
+                return jsonify({"error": "AI response invalid. No answer returned."}), 500
         except Exception as ai_error:
             return jsonify({"error": f"AI service error: {str(ai_error)}"}), 500
         
